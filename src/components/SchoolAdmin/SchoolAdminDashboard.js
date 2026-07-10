@@ -113,7 +113,7 @@ const SchoolAdminDashboard = () => {
     try {
       const q = query(
         userConsentsCollection,
-        where('user_id', '==', user.id)
+       where('user_id', '==', user.uid)
       );
       const snapshot = await getDocs(q);
       
