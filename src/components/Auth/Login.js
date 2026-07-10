@@ -24,11 +24,14 @@ const [userSchoolId, setUserSchoolId] = useState(null);
 const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 const [animationClass, setAnimationClass] = useState('');
 
-const mediaItems = [
-  // example items — replace with yours if needed
-  { type: 'image', src: '/images/slide1.jpg' },
-  { type: 'image', src: '/images/slide2.jpg' }
-];
+ const mediaItems = [
+    { type: 'image', url: 'https://yt3.ggpht.com/sATVa4e20FmjSNqg7AoS2pAEm3hDpyquKP7t34Q9DfURC4pks1mPums-afugv0yvxmbOpMPeQ2bG=s500-rw-nd-v1' },
+    { type: 'image', url: 'https://yt3.ggpht.com/eKycPSsE2oSNGsSeGwbw2FLqx-NoV3HA6n3iLcuY4g-LTZbIRIiiU9s7Pf6RQ0u5uCadduoJzNnF=s800-rw-nd-v1' },
+    { type: 'image', url: 'https://yt3.ggpht.com/umaJvcXOjexK0qVO7QdTudrEyulJlSHml0rEV25EOg88pPVf5lcCZQpElc7l4_5UbjBEEbPs48V9Ihs=s800-rw-nd-v1' },
+    { type: 'image', url: 'https://yt3.ggpht.com/0HUAhQ2YPKsyE2weNAIQVPJv6Zr3QpThxiJGitsS6lH985WR3ARHASATwVj3l9Mqg_VyQbFJZRZWuw=s800-rw-nd-v1' },
+    { type: 'image', url: 'https://yt3.ggpht.com/h3ChYs2ymVZ_1CP-cftkIKwHOHuA2V2xDE_VvAn_JLhzjuVnQ4kinIY6X1uAMmyQACz0V8cfal2E=s800-rw-nd-v1' },
+    { type: 'video', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
+  ];
 
 // Check email in Firestore
 const checkEmailInDatabase = async (emailAddress) => {
