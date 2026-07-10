@@ -55,7 +55,7 @@ email === '[info.edupriva@gmail.com](mailto:info.edupriva@gmail.com)'
 ? 'platform_admin'
 : 'school_admin';
 
-```
+
 const newUser = {
   email,
   role: defaultRole,
@@ -65,7 +65,7 @@ const newUser = {
 
 await setDoc(ref, newUser);
 return newUser;
-```
+
 
 }
 
@@ -96,7 +96,7 @@ const [loading, setLoading] = useState(true);
 const loadFullProfile = async (firebaseUser) => {
 const userData = await loadUser(firebaseUser.uid, firebaseUser.email);
 
-```
+
 const isPlatformAdmin = userData.role === 'platform_admin';
 
 let school = null;
@@ -121,7 +121,7 @@ persistAuthState({
   profile,
   role: userData.role
 });
-```
+
 
 };
 
@@ -129,7 +129,6 @@ useEffect(() => {
 const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
 setLoading(true);
 
-```
   if (firebaseUser) {
     await loadFullProfile(firebaseUser);
   } else {
@@ -148,7 +147,7 @@ setLoading(true);
 });
 
 return unsubscribe;
-```
+
 
 }, []);
 
