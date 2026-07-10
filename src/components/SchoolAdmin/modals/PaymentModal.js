@@ -217,4 +217,4 @@ const styles = {
 };
 
 export default PaymentModal;
-```
+
