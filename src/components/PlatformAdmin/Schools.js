@@ -6,15 +6,11 @@ import {
   getDocs, 
   getDoc,
   doc, 
-  addDoc, 
   updateDoc, 
   deleteDoc, 
   orderBy, 
   limit,
-  serverTimestamp,
-  writeBatch,
-  runTransaction,
-  Timestamp
+  writeBatch
 } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,12 +29,10 @@ const Schools = () => {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     registration_number: '',
-    school_code: '',
     email: '',
     phone: '',
     address: '',
@@ -48,6 +42,7 @@ const Schools = () => {
     term_fee: 12500,
     admin_email: '',
     admin_phone: '',
+    admin_name: '',
     plan: 'standard'
   });
 
@@ -99,7 +94,7 @@ const Schools = () => {
 
         // Get subscriptions for this school
         const subsQuery = query(
-          collection(db, 'subscriptions'),
+          subscriptionsCollection,
           where('school_id', '==', schoolDoc.id),
           orderBy('created_at', 'desc'),
           limit(1)
@@ -160,65 +155,11 @@ const Schools = () => {
       filtered = filtered.filter(school =>
         school.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         school.registration_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.school_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         school.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
     setFilteredSchools(filtered);
-  };
-
-  const generateSchoolCode = async () => {
-    if (!formData.name) {
-      toast.error('Please enter the school name first');
-      return;
-    }
-
-    setIsGeneratingCode(true);
-    
-    try {
-      const namePrefix = formData.name
-        .split(' ')
-        .slice(0, 2)
-        .map(word => word.charAt(0).toUpperCase())
-        .join('');
-      
-      const year = new Date().getFullYear();
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      let code = `${namePrefix}${year}${random}`;
-      
-      let attempts = 0;
-      let exists = true;
-      
-      while (exists && attempts < 10) {
-        const q = query(
-          schoolsCollection,
-          where('school_code', '==', code)
-        );
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-          attempts++;
-          const newRandom = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-          code = `${namePrefix}${year}${newRandom}`;
-        } else {
-          exists = false;
-        }
-      }
-      
-      if (exists) {
-        toast.error('Could not generate a unique code. Please try again.');
-        return;
-      }
-      
-      setFormData({ ...formData, school_code: code });
-      toast.success(`Generated school code: ${code}`);
-    } catch (error) {
-      console.error('Error generating school code:', error);
-      toast.error('Failed to generate school code');
-    } finally {
-      setIsGeneratingCode(false);
-    }
   };
 
   const handleCreateSchool = async () => {
@@ -229,10 +170,6 @@ const Schools = () => {
     }
     if (!formData.registration_number) {
       toast.error('Registration number is required');
-      return;
-    }
-    if (!formData.school_code) {
-      toast.error('School code is required');
       return;
     }
     if (!formData.email) {
@@ -262,63 +199,10 @@ const Schools = () => {
         return;
       }
 
-      // Check for duplicate school_code
-      const codeQuery = query(
-        schoolsCollection,
-        where('school_code', '==', formData.school_code.toUpperCase())
-      );
-      const codeSnapshot = await getDocs(codeQuery);
-      if (!codeSnapshot.empty) {
-        toast.error(`School code "${formData.school_code.toUpperCase()}" is already in use.`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Check for duplicate registration_number
-      const regQuery = query(
-        schoolsCollection,
-        where('registration_number', '==', formData.registration_number)
-      );
-      const regSnapshot = await getDocs(regQuery);
-      if (!regSnapshot.empty) {
-        toast.error(`Registration number "${formData.registration_number}" is already in use.`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Check for duplicate school email
-      const emailQuery = query(
-        schoolsCollection,
-        where('email', '==', formData.email)
-      );
-      const emailSnapshot = await getDocs(emailQuery);
-      if (!emailSnapshot.empty) {
-        toast.error(`School email "${formData.email}" is already registered.`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Check if admin user already exists
-      const adminQuery = query(
-        usersCollection,
-        where('email', '==', formData.admin_email)
-      );
-      const adminSnapshot = await getDocs(adminQuery);
-      
-      let adminUserId = null;
-      let tempPassword = null;
-
-      // Use a batch write for atomic operations
-      const batch = writeBatch(db);
-
-      // Create school document
-      const schoolRef = doc(schoolsCollection);
-      const now = new Date();
-
-      const schoolData = {
+      // Prepare data for Netlify function
+      const schoolPayload = {
         name: formData.name,
         registration_number: formData.registration_number,
-        school_code: formData.school_code.toUpperCase(),
         email: formData.email,
         phone: formData.phone || null,
         address: formData.address || null,
@@ -326,87 +210,28 @@ const Schools = () => {
         current_term: formData.current_term,
         current_academic_year: formData.current_academic_year,
         term_fee: formData.term_fee,
-        status: 'active',
-        wallet_balance: 0,
-        created_by: currentUser.uid,
-        created_at: now,
-        updated_at: now
+        admin_email: formData.admin_email,
+        admin_phone: formData.admin_phone || null,
+        admin_name: formData.admin_name || `${formData.name} Admin`,
+        plan: formData.plan
       };
 
-      batch.set(schoolRef, schoolData);
+      // Call Netlify function to create school
+      const response = await fetch('/.netlify/functions/create-school', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(schoolPayload),
+      });
 
-      // Create subscription
-      const subRef = doc(subscriptionsCollection);
-      const expiryDate = new Date();
-      if (formData.plan === 'trial') {
-        expiryDate.setDate(expiryDate.getDate() + 30);
-      } else {
-        expiryDate.setMonth(expiryDate.getMonth() + 3);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create school');
       }
 
-      const subscriptionData = {
-        school_id: schoolRef.id,
-        plan: formData.plan,
-        status: 'active',
-        expiry_date: expiryDate,
-        created_at: now,
-        updated_at: now
-      };
-
-      batch.set(subRef, subscriptionData);
-
-      // If admin doesn't exist, create user document
-      if (adminSnapshot.empty) {
-        // In Firebase, user accounts are created via Firebase Auth
-        // We'll create the user document and send invitation separately
-        const userRef = doc(usersCollection);
-        const userData = {
-          email: formData.admin_email,
-          phone: formData.admin_phone || null,
-          role: 'school_admin',
-          school_id: schoolRef.id,
-          full_name: `${formData.name} Admin`,
-          created_at: now,
-          updated_at: now
-        };
-        batch.set(userRef, userData);
-        adminUserId = userRef.id;
-        tempPassword = Math.random().toString(36).slice(-10) + '!@#';
-      } else {
-        const existingAdmin = adminSnapshot.docs[0];
-        adminUserId = existingAdmin.id;
-        
-        // Update existing user's school_id if not set
-        if (!existingAdmin.data().school_id) {
-          batch.update(doc(db, 'users', adminUserId), {
-            school_id: schoolRef.id,
-            updated_at: now
-          });
-        }
-      }
-
-      // Commit the batch
-      await batch.commit();
-
-      // Send invitation email (you'll need to implement this)
-      if (tempPassword) {
-        try {
-          // Call your cloud function or API to send email
-          await sendInvitationEmail({
-            email: formData.admin_email,
-            password: tempPassword,
-            schoolName: formData.name,
-            schoolCode: formData.school_code.toUpperCase()
-          });
-          toast.success(`School created! Invitation sent to ${formData.admin_email}`);
-        } catch (emailError) {
-          console.error('Error sending invitation:', emailError);
-          toast.warning('School created but invitation email failed. Please send credentials manually.');
-        }
-      } else {
-        toast.success(`School "${formData.name}" created successfully! Admin already exists.`);
-      }
-
+      toast.success(`School "${formData.name}" created successfully! Credentials sent to ${formData.admin_email}`);
       setShowAddModal(false);
       resetForm();
       loadSchools();
@@ -419,23 +244,10 @@ const Schools = () => {
     }
   };
 
-  // Helper function for sending invitation email
-  const sendInvitationEmail = async ({ email, password, schoolName, schoolCode }) => {
-    // Implement your email sending logic here
-    // You can use Firebase Cloud Functions, SendGrid, etc.
-    console.log('Sending invitation to:', email, { password, schoolName, schoolCode });
-    
-    // Example using a Cloud Function:
-    // const sendInvite = getFunctions();
-    // const sendInviteFn = httpsCallable(sendInvite, 'sendSchoolInvite');
-    // await sendInviteFn({ email, password, schoolName, schoolCode });
-  };
-
   const resetForm = () => {
     setFormData({
       name: '',
       registration_number: '',
-      school_code: '',
       email: '',
       phone: '',
       address: '',
@@ -445,6 +257,7 @@ const Schools = () => {
       term_fee: 12500,
       admin_email: '',
       admin_phone: '',
+      admin_name: '',
       plan: 'standard'
     });
   };
@@ -496,7 +309,7 @@ const Schools = () => {
     try {
       // Find the subscription for this school
       const subsQuery = query(
-        collection(db, 'subscriptions'),
+        subscriptionsCollection,
         where('school_id', '==', selectedSchool.id),
         orderBy('created_at', 'desc'),
         limit(1)
@@ -525,13 +338,12 @@ const Schools = () => {
   };
 
   const exportCSV = () => {
-    const headers = ['School Name', 'Registration No', 'School Code', 'Email', 'Phone', 'City', 'Status', 'Plan', 'Expiry Date', 'Admin'];
+    const headers = ['School Name', 'Registration No', 'Email', 'Phone', 'City', 'Status', 'Plan', 'Expiry Date', 'Admin'];
     const rows = filteredSchools.map(school => {
       const subscription = school.subscriptions?.[0];
       return [
         school.name,
         school.registration_number,
-        school.school_code || 'N/A',
         school.email,
         school.phone || 'N/A',
         school.city || 'N/A',
@@ -560,9 +372,6 @@ const Schools = () => {
         <div className="school-name">{school.name}</div>
         <div className="school-reg-number">{school.registration_number}</div>
       </div>
-    )},
-    { key: 'school_code', label: 'School Code', render: (school) => (
-      <div className="school-code-display">{school.school_code || '—'}</div>
     )},
     { key: 'email', label: 'School Email', render: (school) => (
       <div className="admin-email">{school.email || '—'}</div>
@@ -643,7 +452,7 @@ const Schools = () => {
 
   return (
     <div className="schools-page">
-      {/* Header - Keep the same as before */}
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">All Schools</h1>
@@ -665,7 +474,7 @@ const Schools = () => {
         </div>
       </div>
       
-      {/* Filters - Keep the same */}
+      {/* Filters */}
       <div className="filters-container">
         {filters.map(filter => (
           <button
@@ -678,14 +487,14 @@ const Schools = () => {
         ))}
       </div>
       
-      {/* Search Bar - Keep the same */}
+      {/* Search Bar */}
       <div className="search-container">
         <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
           type="text"
-          placeholder="Search school name, registration number, code, or email..."
+          placeholder="Search school name, registration number or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
@@ -701,11 +510,9 @@ const Schools = () => {
         />
       </div>
       
-      {/* Modals - Keep the same JSX structure with updated handlers */}
       {/* Add School Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Register New School">
         <div className="modal-form">
-          {/* Same form content as before */}
           <div className="form-section">
             <h3 className="section-title">School Information</h3>
             
@@ -734,27 +541,6 @@ const Schools = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">School Code *</label>
-                <div className="code-input-group">
-                  <input
-                    type="text"
-                    value={formData.school_code}
-                    onChange={(e) => setFormData({ ...formData, school_code: e.target.value.toUpperCase() })}
-                    className="form-input code-input"
-                    placeholder="e.g., GFA2025"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={generateSchoolCode}
-                    className="btn-generate-code"
-                    disabled={isGeneratingCode || !formData.name}
-                  >
-                    {isGeneratingCode ? '...' : 'Generate'}
-                  </button>
-                </div>
-                <div className="field-hint">Unique identifier for the school (auto-converted to uppercase)</div>
-              </div>
-              <div className="form-group">
                 <label className="form-label">School Email *</label>
                 <input
                   type="email"
@@ -764,9 +550,6 @@ const Schools = () => {
                   placeholder="info@school.ac.ke"
                 />
               </div>
-            </div>
-
-            <div className="form-row">
               <div className="form-group">
                 <label className="form-label">School Phone</label>
                 <input
@@ -775,6 +558,19 @@ const Schools = () => {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="form-input"
                   placeholder="+254 712 345 678"
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="form-input"
+                  placeholder="School address"
                 />
               </div>
               <div className="form-group">
@@ -788,20 +584,8 @@ const Schools = () => {
                 />
               </div>
             </div>
-
-            <div className="form-group">
-              <label className="form-label">Address</label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="form-input"
-                placeholder="School address"
-              />
-            </div>
           </div>
 
-          {/* Academic Settings Section */}
           <div className="form-section">
             <h3 className="section-title">Academic Settings</h3>
             
@@ -842,11 +626,20 @@ const Schools = () => {
             </div>
           </div>
 
-          {/* Admin Account Section */}
           <div className="form-section">
             <h3 className="section-title">Admin Account</h3>
             
             <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Admin Full Name *</label>
+                <input
+                  type="text"
+                  value={formData.admin_name}
+                  onChange={(e) => setFormData({ ...formData, admin_name: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g., John Doe"
+                />
+              </div>
               <div className="form-group">
                 <label className="form-label">Admin Email *</label>
                 <input
@@ -856,22 +649,22 @@ const Schools = () => {
                   className="form-input"
                   placeholder="admin@school.ac.ke"
                 />
-                <div className="field-hint">Login credentials will be sent to this email</div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Admin Phone</label>
-                <input
-                  type="tel"
-                  value={formData.admin_phone}
-                  onChange={(e) => setFormData({ ...formData, admin_phone: e.target.value })}
-                  className="form-input"
-                  placeholder="+254 712 345 678"
-                />
-              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Admin Phone</label>
+              <input
+                type="tel"
+                value={formData.admin_phone}
+                onChange={(e) => setFormData({ ...formData, admin_phone: e.target.value })}
+                className="form-input"
+                placeholder="+254 712 345 678"
+              />
+              <div className="field-hint">Login credentials will be sent to the admin email</div>
             </div>
           </div>
 
-          {/* Subscription Section */}
           <div className="form-section">
             <h3 className="section-title">Subscription Plan</h3>
             
@@ -936,8 +729,6 @@ const Schools = () => {
           <div className="school-info-value">{selectedSchool?.name}</div>
           <div className="school-info-label mt-2">Registration Number</div>
           <div className="school-info-value">{selectedSchool?.registration_number}</div>
-          <div className="school-info-label mt-2">School Code</div>
-          <div className="school-info-value">{selectedSchool?.school_code || 'N/A'}</div>
         </div>
         
         <div className="form-group">
@@ -1151,17 +942,6 @@ const Schools = () => {
           margin-top: 2px;
         }
 
-        .school-code-display {
-          font-size: 13px;
-          font-weight: 500;
-          color: #2d3748;
-          font-family: monospace;
-          background: #f7fafc;
-          padding: 2px 8px;
-          border-radius: 4px;
-          display: inline-block;
-        }
-
         .admin-email {
           color: #4a5568;
           font-size: 14px;
@@ -1337,47 +1117,10 @@ const Schools = () => {
           background: white;
         }
 
-        .code-input-group {
-          display: flex;
-          gap: 8px;
-        }
-
-        .code-input {
-          flex: 1;
-        }
-
-        .btn-generate-code {
-          padding: 10px 16px;
-          background: #edf2f7;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          color: #4a5568;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: all 0.2s;
-        }
-
-        .btn-generate-code:hover:not(:disabled) {
-          background: #e2e8f0;
-          border-color: #ff6b00;
-          color: #ff6b00;
-        }
-
-        .btn-generate-code:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
         .field-hint {
           font-size: 11px;
           color: #a0aec0;
           margin-top: 4px;
-        }
-
-        .mt-2 {
-          margin-top: 8px;
         }
 
         .modal-footer {
@@ -1515,15 +1258,6 @@ const Schools = () => {
           .btn-suspend,
           .btn-reinstate {
             text-align: center;
-          }
-
-          .code-input-group {
-            flex-direction: column;
-          }
-
-          .btn-generate-code {
-            width: 100%;
-            justify-content: center;
           }
         }
       `}</style>
