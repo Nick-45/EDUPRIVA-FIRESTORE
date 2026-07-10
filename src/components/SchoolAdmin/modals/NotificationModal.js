@@ -1,4 +1,3 @@
-```javascript
 // src/components/SchoolAdmin/modals/NotificationModal.js
 import React from 'react';
 import { db } from '../../../services/firebase';
