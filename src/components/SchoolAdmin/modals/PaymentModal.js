@@ -1,4 +1,3 @@
-```javascript
 // src/components/SchoolAdmin/modals/PaymentModal.js
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../services/firebase';
