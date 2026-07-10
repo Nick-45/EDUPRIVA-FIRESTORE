@@ -21,6 +21,14 @@ const [showSchoolCode, setShowSchoolCode] = useState(false);
 const [checkingEmail, setCheckingEmail] = useState(false);
 const [userRole, setUserRole] = useState(null);
 const [userSchoolId, setUserSchoolId] = useState(null);
+const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+const [animationClass, setAnimationClass] = useState('');
+
+const mediaItems = [
+  // example items — replace with yours if needed
+  { type: 'image', src: '/images/slide1.jpg' },
+  { type: 'image', src: '/images/slide2.jpg' }
+];
 
 // Check email in Firestore
 const checkEmailInDatabase = async (emailAddress) => {
