@@ -1,0 +1,18 @@
+[build]
+  command = "CI=false npm run build"
+  publish = "build"
+
+[build.environment]
+  CI = "false"
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Handle password reset redirects properly
+[[redirects]]
+  from = "/update-password"
+  to = "/index.html"
+  status = 200
