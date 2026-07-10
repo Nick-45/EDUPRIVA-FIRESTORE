@@ -194,4 +194,4 @@ const styles = {
 };
 
 export default NotificationModal;
-```
+
