@@ -161,7 +161,7 @@ const SchoolAdminDashboard = () => {
     try {
       const currentUser = auth.currentUser;
       const consentDoc = {
-        user_id: user.id,
+        user_id: user.uid,
         school_id: schoolId,
         terms_accepted: consentData.terms_accepted,
         data_processing_accepted: consentData.data_processing_accepted,
@@ -627,7 +627,8 @@ const styles = {
     display: 'flex', 
     minHeight: '100vh', 
     background: '#f8f9fa', 
-    fontFamily: "'Inter', sans-serif" 
+    fontFamily: "'Inter', sans-serif",
+    '@media (max-width: 768px)': { flexDirection: 'column' }
   },
   sidebar: {
     width: 280,
@@ -640,9 +641,26 @@ const styles = {
     position: 'sticky',
     top: 0,
     overflowY: 'auto',
-    '@media (max-width: 1000px)': { display: 'none' }
+    '@media (max-width: 1000px)': { 
+      display: 'none',
+      position: 'fixed',
+      zIndex: 100,
+      transform: 'translateX(-100%)',
+      transition: 'transform 0.3s ease',
+      boxShadow: '2px 0 12px rgba(0,0,0,0.1)'
+    }
   },
-  logo: { padding: '24px 20px', borderBottom: '1px solid #e9ecef' },
+  sidebarOpen: {
+    '@media (max-width: 1000px)': {
+      display: 'flex',
+      transform: 'translateX(0)'
+    }
+  },
+  logo: { 
+    padding: '24px 20px', 
+    borderBottom: '1px solid #e9ecef',
+    '@media (max-width: 600px)': { padding: '16px' }
+  },
   logoBadge: {
     color: '#1a1a1a',
     fontFamily: "'Inter', sans-serif",
@@ -663,7 +681,8 @@ const styles = {
     border: '1px solid #ffedd5', 
     borderRadius: 12, 
     padding: '12px 14px', 
-    cursor: 'pointer' 
+    cursor: 'pointer',
+    '@media (max-width: 600px)': { margin: '12px' }
   },
   schoolName: { 
     fontSize: 14, 
@@ -695,7 +714,8 @@ const styles = {
     fontSize: 14, 
     fontWeight: 500, 
     position: 'relative',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
+    '@media (max-width: 600px)': { padding: '8px 16px', fontSize: 13 }
   },
   navItemActive: { 
     background: '#fff9f0', 
@@ -703,7 +723,12 @@ const styles = {
     borderRight: '3px solid #ff6b00' 
   },
   navIcon: { width: 18, height: 18, display: 'flex', alignItems: 'center' },
-  sidebarFooter: { marginTop: 'auto', padding: '16px', borderTop: '1px solid #e9ecef' },
+  sidebarFooter: { 
+    marginTop: 'auto', 
+    padding: '16px', 
+    borderTop: '1px solid #e9ecef',
+    '@media (max-width: 600px)': { padding: '12px' }
+  },
   userRow: { display: 'flex', alignItems: 'center', gap: 12 },
   avatar: { 
     width: 36, 
@@ -721,7 +746,12 @@ const styles = {
   userName: { fontSize: 13, fontWeight: 600, color: '#1a1a1a' },
   userRole: { fontSize: 11, color: '#868e96' },
   logoutIcon: { cursor: 'pointer', opacity: 0.6, color: '#868e96' },
-  main: { flex: 1, overflowY: 'auto', background: '#f8f9fa' },
+  main: { 
+    flex: 1, 
+    overflowY: 'auto', 
+    background: '#f8f9fa',
+    '@media (max-width: 768px)': { paddingTop: 0 }
+  },
   topbar: {
     background: '#ffffff',
     borderBottom: '1px solid #e9ecef',
@@ -734,9 +764,18 @@ const styles = {
     zIndex: 10,
     flexWrap: 'wrap',
     gap: 12,
-    '@media (max-width: 600px)': { padding: '14px 16px' }
+    '@media (max-width: 600px)': { 
+      padding: '12px 16px',
+      flexDirection: 'column',
+      alignItems: 'stretch'
+    }
   },
-  topbarLeft: { display: 'flex', alignItems: 'center', gap: 16 },
+  topbarLeft: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 16,
+    '@media (max-width: 600px)': { gap: 12 }
+  },
   menuBtn: { 
     display: 'none', 
     cursor: 'pointer', 
@@ -748,10 +787,27 @@ const styles = {
     fontSize: 20, 
     fontWeight: 600, 
     color: '#1a1a1a',
-    margin: 0
+    margin: 0,
+    '@media (max-width: 600px)': { fontSize: 17 }
   },
-  pageDesc: { fontSize: 13, color: '#868e96', marginTop: 4, marginBottom: 0 },
-  topbarRight: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  pageDesc: { 
+    fontSize: 13, 
+    color: '#868e96', 
+    marginTop: 4, 
+    marginBottom: 0,
+    '@media (max-width: 600px)': { fontSize: 12 }
+  },
+  topbarRight: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 12, 
+    flexWrap: 'wrap',
+    '@media (max-width: 600px)': { 
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      gap: 8
+    }
+  },
   btnPrimary: { 
     padding: '8px 16px', 
     borderRadius: 8, 
@@ -761,7 +817,13 @@ const styles = {
     border: 'none', 
     background: '#ff6b00', 
     color: '#ffffff',
-    transition: 'background 0.2s'
+    transition: 'background 0.2s',
+    whiteSpace: 'nowrap',
+    '@media (max-width: 600px)': { 
+      width: '100%',
+      justifyContent: 'center',
+      padding: '10px 16px'
+    }
   },
   btnOutline: { 
     padding: '8px 16px', 
@@ -772,7 +834,13 @@ const styles = {
     background: 'transparent', 
     color: '#4a5568', 
     border: '1px solid #e9ecef',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
+    '@media (max-width: 600px)': { 
+      width: '100%',
+      justifyContent: 'center',
+      padding: '10px 16px'
+    }
   },
   notifBtn: { 
     width: 38, 
@@ -785,7 +853,11 @@ const styles = {
     justifyContent: 'center', 
     cursor: 'pointer', 
     position: 'relative', 
-    color: '#868e96' 
+    color: '#868e96',
+    '@media (max-width: 600px)': { 
+      width: '100%',
+      height: 44
+    }
   },
   notifDot: { 
     position: 'absolute', 
@@ -799,7 +871,13 @@ const styles = {
   },
   content: { 
     padding: '28px',
-    '@media (max-width: 600px)': { padding: '16px' } 
+    '@media (max-width: 600px)': { 
+      padding: '16px',
+      paddingBottom: '80px' 
+    },
+    '@media (min-width: 601px) and (max-width: 1024px)': { 
+      padding: '20px' 
+    }
   },
   bottomNav: {
     display: 'none',
@@ -812,7 +890,11 @@ const styles = {
     padding: '10px 12px',
     zIndex: 30,
     justifyContent: 'space-around',
-    '@media (max-width: 1000px)': { display: 'flex' }
+    '@media (max-width: 1000px)': { 
+      display: 'flex',
+      padding: '8px 8px'
+    },
+    '@media (max-width: 600px)': { padding: '6px 4px' }
   },
   bottomNavItem: { 
     display: 'flex', 
@@ -826,7 +908,11 @@ const styles = {
     padding: '8px 12px', 
     borderRadius: 8, 
     cursor: 'pointer',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s',
+    '@media (max-width: 600px)': { 
+      padding: '6px 8px',
+      fontSize: 9
+    }
   },
   bottomNavItemActive: { 
     color: '#ff6b00', 
@@ -845,7 +931,11 @@ const styles = {
     transition: 'transform 0.3s ease',
     overflowY: 'auto',
     display: 'none',
-    '@media (max-width: 1000px)': { display: 'block' }
+    '@media (max-width: 1000px)': { 
+      display: 'block',
+      boxShadow: '2px 0 12px rgba(0,0,0,0.15)'
+    },
+    '@media (max-width: 600px)': { width: 260 }
   },
   drawerHeader: { 
     display: 'flex', 
